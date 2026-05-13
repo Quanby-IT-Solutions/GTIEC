@@ -7,6 +7,9 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    // Configure a seed command so `pnpm prisma db seed` runs our seed script.
+    // Use `tsx` to run the TypeScript seed directly (tsx is installed as a dev dependency).
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     // Use a direct Postgres connection for Prisma schema operations.

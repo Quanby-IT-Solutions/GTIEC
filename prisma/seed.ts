@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import "dotenv/config";
 
 async function main() {
-  const email = process.env.ADMIN_EMAIL ?? "admin@example.com";
-  const name = process.env.ADMIN_NAME ?? "System Admin";
-  const password = process.env.ADMIN_PASSWORD ?? "change-me";
+  const email = "admin@example.com";
+  const name = "System Admin";
+  const password = "password";
 
   await prisma.admin.upsert({
     where: { email },
