@@ -58,18 +58,19 @@ export function RegistrationForm({
 
   useEffect(() => {
     if (!error) return;
-    
+
     // Map error messages to user-friendly messages
     let displayMessage = "Something went wrong. Please try again.";
-    
+
     if (error.includes("already registered")) {
       displayMessage = "This email is already registered.";
     } else if (error.includes("Failed to save")) {
-      displayMessage = "We couldn't process your registration. Please try again.";
+      displayMessage =
+        "We couldn't process your registration. Please try again.";
     } else if (error.includes("required")) {
       displayMessage = "Please fill in all required fields.";
     }
-    
+
     toast.error(displayMessage, {
       style: {
         background: "var(--chart-5)",
