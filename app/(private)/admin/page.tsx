@@ -14,35 +14,45 @@ import {
   Select,
   SelectContent,
   SelectItem,
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const html = `
-                        <div style="font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding:24px; color:#111827">
-                          <div style="border:1px solid #e5e7eb; padding:20px; border-radius:8px; max-width:720px; margin:0 auto">
-                            <h1 style="font-size:18px; margin-bottom:8px">Registrant Details</h1>
-                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6"><div style="color:#6b7280; width:140px">ID</div><div style="font-weight:600">${r.id}</div></div>
-                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6"><div style="color:#6b7280; width:140px">Name</div><div style="font-weight:600">${(r.firstName??"") + (r.lastName?" "+r.lastName:"")}</div></div>
-                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6"><div style="color:#6b7280; width:140px">Email</div><div style="font-weight:600">${r.email ?? "—"}</div></div>
-                            <div style="display:flex; justify-content:space-between; padding:8px 0"><div style="color:#6b7280; width:140px">Registered</div><div style="font-weight:600">${r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}</div></div>
-                          </div>
-                        </div>
-                      `
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
 
-                      // Render printable HTML in the current document body, trigger print, then reload app
-                      try {
-                        const originalBody = document.body.innerHTML
-                        document.body.innerHTML = html
-                        window.print()
-                        // restore by reloading to ensure React app state is consistent
-                        window.location.reload()
-                      } catch (e) {
-                        console.error('Print failed', e)
-                      }
-                    }}
-                  >
-                    Print
-                  </Button>
+type Registrant = {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  createdAt?: string | null;
+};
+
+const DEFAULT_PAGE_SIZE = 10;
+
+export default function AdminPage() {
+  const [registrants, setRegistrants] = useState<Registrant[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [total, setTotal] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const totalPages = useMemo(() => {
+    if (total == null) return null;
+    return Math.max(1, Math.ceil(total / pageSize));
+  }, [total, pageSize]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/registrants?limit=${pageSize}&page=${page}`,
+        );
+        if (!res.ok) throw new Error("Failed to fetch");
+        const json = await res.json();
+        if (!mounted) return;
+        setRegistrants(json.items || []);
+        setTotal(typeof json.total === "number" ? json.total : null);
       } catch (e) {
         console.error(e);
       } finally {
@@ -94,6 +104,7 @@ import {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Registered</TableHead>
+              <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -112,36 +123,24 @@ import {
                     variant="ghost"
                     onClick={() => {
                       const html = `
-                          <html>
-                          <head>
-                            <title>Registrant ${r.id}</title>
-                            <style>
-                              body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding: 24px; color: #111827; }
-                              .card { border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; max-width: 720px; margin: 0 auto; }
-                              h1 { font-size: 18px; margin-bottom: 8px; }
-                              .row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6 }
-                              .label { color:#6b7280; width:140px }
-                              .value { font-weight:600 }
-                              @media print { button{ display:none } }
-                            </style>
-                          </head>
-                          <body>
-                            <div class="card">
-                              <h1>Registrant Details</h1>
-                              <div class="row"><div class="label">ID</div><div class="value">${r.id}</div></div>
-                              <div class="row"><div class="label">Name</div><div class="value">${(r.firstName ?? "") + (r.lastName ? " " + r.lastName : "")}</div></div>
-                              <div class="row"><div class="label">Email</div><div class="value">${r.email ?? "—"}</div></div>
-                              <div class="row"><div class="label">Registered</div><div class="value">${r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}</div></div>
-                            </div>
-                            <script>window.print();</script>
-                          </body>
-                          </html>
-                        `;
-                      const w = window.open("", "_blank");
-                      if (w) {
-                        w.document.open();
-                        w.document.write(html);
-                        w.document.close();
+                        <div style="font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding:24px; color:#111827">
+                          <div style="border:1px solid #e5e7eb; padding:20px; border-radius:8px; max-width:720px; margin:0 auto">
+                            <h1 style="font-size:18px; margin-bottom:8px">Registrant Details</h1>
+                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6"><div style="color:#6b7280; width:140px">ID</div><div style="font-weight:600">${r.id}</div></div>
+                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6"><div style="color:#6b7280; width:140px">Name</div><div style="font-weight:600">${(r.firstName ?? "") + (r.lastName ? " " + r.lastName : "")}</div></div>
+                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6"><div style="color:#6b7280; width:140px">Email</div><div style="font-weight:600">${r.email ?? "—"}</div></div>
+                            <div style="display:flex; justify-content:space-between; padding:8px 0"><div style="color:#6b7280; width:140px">Registered</div><div style="font-weight:600">${r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}</div></div>
+                          </div>
+                        </div>
+                      `;
+
+                      try {
+                        const originalBody = document.body.innerHTML;
+                        document.body.innerHTML = html;
+                        window.print();
+                        window.location.reload();
+                      } catch (e) {
+                        console.error("Print failed", e);
                       }
                     }}
                   >
@@ -153,7 +152,7 @@ import {
             {registrants.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={5}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   {loading ? "Loading..." : "No registrants"}
