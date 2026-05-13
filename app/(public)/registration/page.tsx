@@ -1,9 +1,15 @@
+"use client";
+
+import { useState } from "react";
 import { RegistrationBackgroundMotion } from "@/components/registration/registration-background-motion";
 import { RegistrationForm } from "@/components/registration/registration-form";
+import { EventAlertModal } from "@/components/event-alert-modal";
 
 export default function RegistrationPage() {
+  const [showEventModal, setShowEventModal] = useState(true);
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-chart-3 px-4 py-10 sm:px-6">
+      <EventAlertModal />
       <RegistrationBackgroundMotion />
       <div
         aria-hidden
@@ -15,7 +21,7 @@ export default function RegistrationPage() {
       />
 
       <div className="relative z-10 w-full max-w-xl">
-        <RegistrationForm />
+        <RegistrationForm onSuccessfulSubmit={() => setShowEventModal(true)} />
       </div>
     </main>
   );
