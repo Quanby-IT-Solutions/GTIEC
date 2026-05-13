@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "../../../components/ui/table";
 import { Button } from "../../../components/ui/button";
+import { Checkbox } from "../../../components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -34,8 +35,180 @@ type Registrant = {
 
 const DEFAULT_PAGE_SIZE = 10;
 
+function getPrintableName(registrant: Registrant) {
+  const nameFromParts =
+    `${registrant.firstName ?? ""} ${registrant.lastName ?? ""}`.trim();
+  const candidates = [registrant.full_name, registrant.fullName, nameFromParts];
+
+  return (
+    candidates.find(
+      (value) => typeof value === "string" && value.trim().length > 0,
+    ) ?? "—"
+  );
+}
+
+function getPrintableCompanyName(registrant: Registrant) {
+  return registrant.company_name ?? registrant.companyName ?? "—";
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+
+    return entities[character];
+  });
+}
+
+function getPrintFontSize(value: string) {
+  const characterCount = Math.max(value.trim().length, 1);
+
+  return Math.min(54, Math.max(12, 520 / characterCount));
+}
+
+function getRegistrantPrintLines(registrant: Registrant) {
+  return [getPrintableName(registrant), getPrintableCompanyName(registrant)].map(
+    (value) => ({
+      text: escapeHtml(value),
+      fontSize: getPrintFontSize(value),
+    }),
+  );
+}
+
+function createPrintHtml(registrants: Registrant[]) {
+  const cards = registrants
+    .map((registrant) => {
+      const printLines = getRegistrantPrintLines(registrant);
+
+      return `
+        <section class="card">
+          <div class="print-area">
+            <div class="line" style="font-size: ${printLines[0].fontSize}pt;">${printLines[0].text}</div>
+            <div class="line" style="font-size: ${printLines[1].fontSize}pt;">${printLines[1].text}</div>
+          </div>
+        </section>
+      `;
+    })
+    .join("");
+
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Registrant Card</title>
+        <style>
+          @page {
+            size: 4in 4in;
+            margin: 0;
+          }
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 4in;
+            overflow: visible;
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .card {
+            box-sizing: border-box;
+            width: 4in;
+            height: 4in;
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            border: 0;
+            break-after: page;
+            page-break-after: always;
+            overflow: hidden;
+          }
+          .card:last-child {
+            break-after: auto;
+            page-break-after: auto;
+          }
+          .print-area {
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            height: 2in;
+            margin: 0;
+            padding: 0;
+          }
+          .line {
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            color: #0f172a;
+            font-weight: 900;
+            line-height: 0.95;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>${cards}</body>
+    </html>
+  `;
+}
+
+function printRegistrants(registrants: Registrant[]) {
+  if (registrants.length === 0) return;
+
+  try {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const cleanup = () => {
+      iframe.remove();
+    };
+
+    iframe.onload = () => {
+      const targetWindow = iframe.contentWindow;
+      if (!targetWindow) {
+        cleanup();
+        return;
+      }
+
+      targetWindow.focus();
+      targetWindow.print();
+      targetWindow.onafterprint = cleanup;
+      setTimeout(cleanup, 1500);
+    };
+
+    iframe.srcdoc = createPrintHtml(registrants);
+  } catch (e) {
+    console.error("Print failed", e);
+  }
+}
+
 export default function AdminPage() {
   const [registrants, setRegistrants] = useState<Registrant[]>([]);
+  const [selectedRegistrantIds, setSelectedRegistrantIds] = useState<string[]>(
+    [],
+  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -48,6 +221,17 @@ export default function AdminPage() {
     if (total == null) return null;
     return Math.max(1, Math.ceil(total / pageSize));
   }, [total, pageSize]);
+  const selectedRegistrantIdSet = useMemo(
+    () => new Set(selectedRegistrantIds),
+    [selectedRegistrantIds],
+  );
+  const selectedRegistrants = useMemo(
+    () => registrants.filter((registrant) => selectedRegistrantIdSet.has(registrant.id)),
+    [registrants, selectedRegistrantIdSet],
+  );
+  const allVisibleSelected =
+    registrants.length > 0 &&
+    registrants.every((registrant) => selectedRegistrantIdSet.has(registrant.id));
 
   useEffect(() => {
     setPage(1);
@@ -91,6 +275,22 @@ export default function AdminPage() {
   }
   function next() {
     setPage((p) => (totalPages ? Math.min(totalPages, p + 1) : p + 1));
+  }
+  function toggleRegistrantSelection(registrantId: string, checked: boolean) {
+    setSelectedRegistrantIds((current) =>
+      checked
+        ? [...new Set([...current, registrantId])]
+        : current.filter((id) => id !== registrantId),
+    );
+  }
+  function toggleVisibleSelection(checked: boolean) {
+    const visibleIds = registrants.map((registrant) => registrant.id);
+
+    setSelectedRegistrantIds((current) =>
+      checked
+        ? [...new Set([...current, ...visibleIds])]
+        : current.filter((id) => !visibleIds.includes(id)),
+    );
   }
 
   return (
@@ -143,6 +343,13 @@ export default function AdminPage() {
               <SelectItem value="100">100</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            disabled={selectedRegistrants.length === 0}
+            onClick={() => printRegistrants(selectedRegistrants)}
+          >
+            Print selected ({selectedRegistrants.length})
+          </Button>
         </div>
       </div>
 
@@ -150,6 +357,15 @@ export default function AdminPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  aria-label="Select all visible registrants"
+                  checked={allVisibleSelected}
+                  onCheckedChange={(checked) =>
+                    toggleVisibleSelection(checked === true)
+                  }
+                />
+              </TableHead>
               <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
@@ -160,6 +376,15 @@ export default function AdminPage() {
           <TableBody>
             {registrants.map((r) => (
               <TableRow key={r.id}>
+                <TableCell>
+                  <Checkbox
+                    aria-label={`Select ${getPrintableName(r)}`}
+                    checked={selectedRegistrantIdSet.has(r.id)}
+                    onCheckedChange={(checked) =>
+                      toggleRegistrantSelection(r.id, checked === true)
+                    }
+                  />
+                </TableCell>
                 <TableCell className="font-medium text-sm">{r.id}</TableCell>
                 <TableCell>
                   {`${r.firstName ?? ""} ${r.lastName ?? ""}`.trim() || "—"}
@@ -171,145 +396,7 @@ export default function AdminPage() {
                 <TableCell>
                   <Button
                     variant="ghost"
-                    onClick={() => {
-                      try {
-                        const nameFromParts = `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim();
-                        const printableFullnameCandidates = [r.full_name, r.fullName, nameFromParts];
-                        const printableFullname =
-                          printableFullnameCandidates.find(
-                            (value) => typeof value === "string" && value.trim().length > 0,
-                          ) ?? "—";
-                        const printableDesignation = r.designation ?? "—";
-                        const printableCompanyName =
-                          r.company_name ?? r.companyName ?? "—";
-                        const escapeHtml = (value: string) =>
-                          value.replace(/[&<>"']/g, (character) => {
-                            const entities: Record<string, string> = {
-                              "&": "&amp;",
-                              "<": "&lt;",
-                              ">": "&gt;",
-                              '"': "&quot;",
-                              "'": "&#39;",
-                            };
-
-                            return entities[character];
-                          });
-                        const getPrintFontSize = (value: string) => {
-                          const characterCount = Math.max(value.trim().length, 1);
-
-                          return Math.min(38, Math.max(8, 350 / characterCount));
-                        };
-                        const printLines = [
-                          printableCompanyName,
-                          printableDesignation,
-                          printableFullname,
-                        ].map((value) => ({
-                          text: escapeHtml(value),
-                          fontSize: getPrintFontSize(value),
-                        }));
-
-                        const html = `
-                          <!doctype html>
-                          <html>
-                            <head>
-                              <meta charset="utf-8" />
-                              <title>Registrant Card</title>
-                              <style>
-                                @page {
-                                  size: 3in 3in;
-                                  margin: 0;
-                                }
-                                html, body {
-                                  margin: 0;
-                                  padding: 0;
-                                  width: 3in;
-                                  height: 3in;
-                                  overflow: hidden;
-                                  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                                  -webkit-print-color-adjust: exact;
-                                  print-color-adjust: exact;
-                                }
-                                .card {
-                                  box-sizing: border-box;
-                                  width: 100%;
-                                  height: 100%;
-                                  padding: 0;
-                                  background: #ffffff;
-                                  border: 0;
-                                  display: flex;
-                                  flex-direction: column;
-                                  justify-content: center;
-                                }
-                                .grid {
-                                  display: grid;
-                                  grid-template-rows: repeat(3, 1fr);
-                                  width: 100%;
-                                  height: 100%;
-                                }
-                                .line {
-                                  box-sizing: border-box;
-                                  display: flex;
-                                  align-items: center;
-                                  justify-content: center;
-                                  width: 100%;
-                                  max-width: 100%;
-                                  min-width: 0;
-                                  padding: 0 0.03in;
-                                  overflow: hidden;
-                                  color: #0f172a;
-                                  font-weight: 900;
-                                  line-height: 0.95;
-                                  overflow-wrap: anywhere;
-                                  word-break: break-word;
-                                  text-align: center;
-                                  text-wrap: balance;
-                                }
-                              </style>
-                            </head>
-                            <body>
-                              <section class="card">
-                                <div class="grid">
-                                  <div class="line" style="font-size: ${printLines[0].fontSize}pt;">${printLines[0].text}</div>
-                                  <div class="line" style="font-size: ${printLines[1].fontSize}pt;">${printLines[1].text}</div>
-                                  <div class="line" style="font-size: ${printLines[2].fontSize}pt;">${printLines[2].text}</div>
-                                </div>
-                              </section>
-                            </body>
-                          </html>
-                        `;
-
-                        const iframe = document.createElement("iframe");
-                        iframe.style.position = "fixed";
-                        iframe.style.right = "0";
-                        iframe.style.bottom = "0";
-                        iframe.style.width = "0";
-                        iframe.style.height = "0";
-                        iframe.style.border = "0";
-                        iframe.setAttribute("aria-hidden", "true");
-                        document.body.appendChild(iframe);
-
-                        const cleanup = () => {
-                          iframe.remove();
-                        };
-
-                        iframe.onload = () => {
-                          const targetWindow = iframe.contentWindow;
-                          if (!targetWindow) {
-                            cleanup();
-                            return;
-                          }
-
-                          targetWindow.focus();
-                          targetWindow.print();
-                          targetWindow.onafterprint = cleanup;
-                          setTimeout(cleanup, 1500);
-                        };
-
-                        iframe.srcdoc = html;
-                      } catch (e) {
-                        console.error("Print failed", e);
-                      }
-                    }}
+                    onClick={() => printRegistrants([r])}
                   >
                     Print
                   </Button>
@@ -319,7 +406,7 @@ export default function AdminPage() {
             {registrants.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   {loading ? "Loading..." : "No registrants"}
