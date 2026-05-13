@@ -67,20 +67,31 @@ function escapeHtml(value: string) {
 
 function getPrintFontSize(value: string) {
   const characterCount = Math.max(value.trim().length, 1);
+  const fontSize = Math.min(44, Math.max(20, 520 / characterCount));
 
-  return Math.min(54, Math.max(12, 520 / characterCount));
+  return Math.max(18, fontSize - 2);
 }
 
-function getRegistrantPrintLines(registrant: Registrant) {
-  return [getPrintableName(registrant), getPrintableCompanyName(registrant)].map(
-    (value) => ({
-      text: escapeHtml(value),
-      fontSize: getPrintFontSize(value),
-    }),
+function getPrintFontSizes(registrants: Registrant[]) {
+  const longestNameLength = Math.max(
+    1,
+    ...registrants.map((registrant) => getPrintableName(registrant).trim().length),
   );
+  const longestCompanyLength = Math.max(
+    1,
+    ...registrants.map((registrant) =>
+      getPrintableCompanyName(registrant).trim().length,
+    ),
+  );
+
+  return {
+    name: getPrintFontSize("x".repeat(longestNameLength)),
+    company: getPrintFontSize("x".repeat(longestCompanyLength)),
+  };
 }
 
 function createPrintHtml(registrants: Registrant[]) {
+  const fontSizes = getPrintFontSizes(registrants);
   const cards = registrants
     .reduce<Registrant[][]>((pages, registrant, index) => {
       if (index % 2 === 0) {
@@ -94,12 +105,15 @@ function createPrintHtml(registrants: Registrant[]) {
     .map((pageRegistrants) => {
       const labels = pageRegistrants
         .map((registrant) => {
-          const printLines = getRegistrantPrintLines(registrant);
+          const printableName = escapeHtml(getPrintableName(registrant));
+          const printableCompanyName = escapeHtml(
+            getPrintableCompanyName(registrant),
+          );
 
           return `
           <div class="label">
-            <div class="line" style="font-size: ${printLines[0].fontSize}pt;">${printLines[0].text}</div>
-            <div class="line" style="font-size: ${printLines[1].fontSize}pt;">${printLines[1].text}</div>
+            <div class="line name">${printableName}</div>
+            <div class="line company">${printableCompanyName}</div>
           </div>
         `;
         })
@@ -177,6 +191,12 @@ function createPrintHtml(registrants: Registrant[]) {
             overflow-wrap: anywhere;
             word-break: break-word;
             text-align: center;
+          }
+          .name {
+            font-size: ${fontSizes.name}pt;
+          }
+          .company {
+            font-size: ${fontSizes.company}pt;
           }
         </style>
       </head>
