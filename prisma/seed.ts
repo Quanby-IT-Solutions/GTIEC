@@ -1,7 +1,5 @@
+import { prisma } from "@/lib/prisma";
 import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma";
-
-const prisma = new PrismaClient();
 
 async function main() {
   const email = process.env.ADMIN_EMAIL ?? "admin@example.com";
