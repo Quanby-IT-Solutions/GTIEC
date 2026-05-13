@@ -182,6 +182,31 @@ export default function AdminPage() {
                         const printableDesignation = r.designation ?? "—";
                         const printableCompanyName =
                           r.company_name ?? r.companyName ?? "—";
+                        const escapeHtml = (value: string) =>
+                          value.replace(/[&<>"']/g, (character) => {
+                            const entities: Record<string, string> = {
+                              "&": "&amp;",
+                              "<": "&lt;",
+                              ">": "&gt;",
+                              '"': "&quot;",
+                              "'": "&#39;",
+                            };
+
+                            return entities[character];
+                          });
+                        const getPrintFontSize = (value: string) => {
+                          const characterCount = Math.max(value.trim().length, 1);
+
+                          return Math.min(38, Math.max(8, 350 / characterCount));
+                        };
+                        const printLines = [
+                          printableCompanyName,
+                          printableDesignation,
+                          printableFullname,
+                        ].map((value) => ({
+                          text: escapeHtml(value),
+                          fontSize: getPrintFontSize(value),
+                        }));
 
                         const html = `
                           <!doctype html>
@@ -191,14 +216,14 @@ export default function AdminPage() {
                               <title>Registrant Card</title>
                               <style>
                                 @page {
-                                  size: 3.375in 2.125in;
+                                  size: 3in 3in;
                                   margin: 0;
                                 }
                                 html, body {
                                   margin: 0;
                                   padding: 0;
-                                  width: 3.375in;
-                                  height: 2.125in;
+                                  width: 3in;
+                                  height: 3in;
                                   overflow: hidden;
                                   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                                   -webkit-print-color-adjust: exact;
@@ -208,33 +233,45 @@ export default function AdminPage() {
                                   box-sizing: border-box;
                                   width: 100%;
                                   height: 100%;
-                                  padding: 0.12in;
+                                  padding: 0;
                                   background: #ffffff;
-                                  border: 1px solid #cbd5e1;
+                                  border: 0;
                                   display: flex;
                                   flex-direction: column;
                                   justify-content: center;
                                 }
                                 .grid {
                                   display: grid;
-                                  gap: 0.06in;
+                                  grid-template-rows: repeat(3, 1fr);
+                                  width: 100%;
+                                  height: 100%;
                                 }
                                 .line {
+                                  box-sizing: border-box;
+                                  display: flex;
+                                  align-items: center;
+                                  justify-content: center;
+                                  width: 100%;
+                                  max-width: 100%;
+                                  min-width: 0;
+                                  padding: 0 0.03in;
+                                  overflow: hidden;
                                   color: #0f172a;
-                                  font-weight: 700;
-                                  font-size: 8pt;
-                                  line-height: 1.25;
+                                  font-weight: 900;
+                                  line-height: 0.95;
+                                  overflow-wrap: anywhere;
                                   word-break: break-word;
                                   text-align: center;
+                                  text-wrap: balance;
                                 }
                               </style>
                             </head>
                             <body>
                               <section class="card">
                                 <div class="grid">
-                                  <div class="line">${printableCompanyName}</div>
-                                  <div class="line">${printableDesignation}</div>
-                                  <div class="line">${printableFullname}</div>
+                                  <div class="line" style="font-size: ${printLines[0].fontSize}pt;">${printLines[0].text}</div>
+                                  <div class="line" style="font-size: ${printLines[1].fontSize}pt;">${printLines[1].text}</div>
+                                  <div class="line" style="font-size: ${printLines[2].fontSize}pt;">${printLines[2].text}</div>
                                 </div>
                               </section>
                             </body>
