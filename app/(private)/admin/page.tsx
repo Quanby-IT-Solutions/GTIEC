@@ -82,15 +82,32 @@ function getRegistrantPrintLines(registrant: Registrant) {
 
 function createPrintHtml(registrants: Registrant[]) {
   const cards = registrants
-    .map((registrant) => {
-      const printLines = getRegistrantPrintLines(registrant);
+    .reduce<Registrant[][]>((pages, registrant, index) => {
+      if (index % 2 === 0) {
+        pages.push([]);
+      }
 
-      return `
-        <section class="card">
-          <div class="print-area">
+      pages[pages.length - 1].push(registrant);
+
+      return pages;
+    }, [])
+    .map((pageRegistrants) => {
+      const labels = pageRegistrants
+        .map((registrant) => {
+          const printLines = getRegistrantPrintLines(registrant);
+
+          return `
+          <div class="label">
             <div class="line" style="font-size: ${printLines[0].fontSize}pt;">${printLines[0].text}</div>
             <div class="line" style="font-size: ${printLines[1].fontSize}pt;">${printLines[1].text}</div>
           </div>
+        `;
+        })
+        .join("");
+
+      return `
+        <section class="card">
+          ${labels}
         </section>
       `;
     })
@@ -132,7 +149,7 @@ function createPrintHtml(registrants: Registrant[]) {
             break-after: auto;
             page-break-after: auto;
           }
-          .print-area {
+          .label {
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -143,6 +160,7 @@ function createPrintHtml(registrants: Registrant[]) {
             height: 2in;
             margin: 0;
             padding: 0;
+            overflow: hidden;
           }
           .line {
             box-sizing: border-box;
