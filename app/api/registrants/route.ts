@@ -157,9 +157,21 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const pageParam = Number(url.searchParams.get("page") ?? "1")
   const limitParam = Number(url.searchParams.get("limit") ?? "10")
+  const query = (url.searchParams.get("q") ?? "").trim()
+  const sortByParam = (url.searchParams.get("sortBy") ?? "createdAt").trim()
+  const sortDirParam = (url.searchParams.get("sortDir") ?? "desc").trim().toLowerCase()
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 10
   const offset = (page - 1) * limit
+  const allowedSortBy = new Set([
+    "createdAt",
+    "full_name",
+    "email",
+    "designation",
+    "company_name",
+  ])
+  const sortBy = allowedSortBy.has(sortByParam) ? sortByParam : "createdAt"
+  const sortDir = sortDirParam === "asc" ? "asc" : "desc"
 
   const endpoints = ["Registrant", "registrant", "registrants"]
   let lastErrorText = ""
@@ -167,8 +179,19 @@ export async function GET(request: Request) {
 
   for (const endpoint of endpoints) {
     try {
+      const sanitizedQuery = query.replaceAll("*", "")
+      const encodedQuery = encodeURIComponent(sanitizedQuery)
+      const searchFilter = query
+        ? `&or=(${[
+            `full_name.ilike.*${encodedQuery}*`,
+            `email.ilike.*${encodedQuery}*`,
+            `designation.ilike.*${encodedQuery}*`,
+            `company_name.ilike.*${encodedQuery}*`,
+          ].join(",")})`
+        : ""
+
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/${endpoint}?select=*&limit=${limit}&offset=${offset}`,
+        `${supabaseUrl}/rest/v1/${endpoint}?select=*&limit=${limit}&offset=${offset}&order=${sortBy}.${sortDir}${searchFilter}`,
         {
           method: "GET",
           headers: {
@@ -197,12 +220,17 @@ export async function GET(request: Request) {
 
       // normalize fields to the shape the UI expects
       const items = (rawItems as any[]).map((it) => {
-        const fullName = it.full_name ?? it.fullName ?? ""
-        const parts = String(fullName).trim().split(/\s+/)
+        const fullName = it.full_name ?? it.fullName ?? null
+        const parts = String(fullName ?? "").trim().split(/\s+/)
         const firstName = parts.slice(0, -1).join(" ") || parts[0] || null
         const lastName = parts.length > 1 ? parts[parts.length - 1] : null
         return {
           id: it.id ?? it.uuid ?? null,
+          full_name: fullName,
+          fullName: fullName,
+          designation: it.designation ?? null,
+          company_name: it.company_name ?? null,
+          companyName: it.company_name ?? null,
           firstName,
           lastName,
           email: it.email ?? null,
