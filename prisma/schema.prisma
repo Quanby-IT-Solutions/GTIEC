@@ -25,4 +25,5 @@ model Registrant {
   full_name    String
   company_name String
   createdAt    DateTime @default(now())
+  printedAt    DateTime?
 }

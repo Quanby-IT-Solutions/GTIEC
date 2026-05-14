@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "../../../components/ui/select";
 import { Input } from "../../../components/ui/input";
+import { Badge } from "../../../components/ui/badge";
 
 type Registrant = {
   id?: string | null;
@@ -27,6 +28,7 @@ type Registrant = {
   fullName?: string | null;
   company_name?: string | null;
   companyName?: string | null;
+  printedAt?: string | null;
 };
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -249,7 +251,7 @@ export default function AdminPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("full_name");
+  const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -368,6 +370,25 @@ export default function AdminPage() {
     );
   }
 
+  async function markRegistrantsPrinted(items: Registrant[]) {
+    const ids = items
+      .map((registrant) => registrant.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+    if (ids.length === 0) return;
+    try {
+      const res = await fetch("/api/registrants", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error("Failed to mark registrants as printed");
+      setRefreshTick((current) => current + 1);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   async function deleteRegistrantIds(ids: string[]) {
     if (ids.length === 0) return;
     setDeleting(true);
@@ -449,7 +470,10 @@ export default function AdminPage() {
           <Button
             variant="outline"
             disabled={selectedRegistrants.length === 0}
-            onClick={() => printRegistrants(selectedRegistrants)}
+            onClick={() => {
+              printRegistrants(selectedRegistrants);
+              void markRegistrantsPrinted(selectedRegistrants);
+            }}
           >
             Print selected ({selectedRegistrants.length})
           </Button>
@@ -478,6 +502,7 @@ export default function AdminPage() {
               </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Company</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -498,10 +523,20 @@ export default function AdminPage() {
                 <TableCell>{getPrintableName(r)}</TableCell>
                 <TableCell>{getPrintableCompanyName(r)}</TableCell>
                 <TableCell>
+                  {r.printedAt ? (
+                    <Badge variant="secondary">Printed</Badge>
+                  ) : (
+                    <Badge variant="outline">Not printed</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
-                      onClick={() => printRegistrants([r])}
+                      onClick={() => {
+                        printRegistrants([r]);
+                        void markRegistrantsPrinted([r]);
+                      }}
                     >
                       Print
                     </Button>
@@ -519,7 +554,7 @@ export default function AdminPage() {
             {registrants.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={5}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   {loading ? "Loading..." : "No registrants"}

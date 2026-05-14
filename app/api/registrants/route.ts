@@ -12,6 +12,11 @@ type DeleteBody = {
   ids?: string[]
 }
 
+type MarkPrintedBody = {
+  id?: string
+  ids?: string[]
+}
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as RegistrantBody | null
 
@@ -85,6 +90,7 @@ export async function GET(request: Request) {
           id: true,
           full_name: true,
           company_name: true,
+          printedAt: true,
         },
         orderBy: {
           [sortBy]: sortDir,
@@ -102,6 +108,7 @@ export async function GET(request: Request) {
         fullName: it.full_name,
         company_name: it.company_name,
         companyName: it.company_name,
+        printedAt: it.printedAt,
       })),
       total,
     })
@@ -109,6 +116,47 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         message: "Failed to fetch registrants.",
+        details: String(error).slice(0, 300),
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: Request) {
+  const body = (await request.json().catch(() => null)) as MarkPrintedBody | null
+  if (!body) {
+    return NextResponse.json({ message: "Invalid request body." }, { status: 400 })
+  }
+
+  const rawIds = [
+    ...(body.id ? [body.id] : []),
+    ...((body.ids ?? []).filter((value): value is string => typeof value === "string")),
+  ]
+  const ids = [...new Set(rawIds.map((id) => id.trim()).filter(Boolean))]
+
+  if (ids.length === 0) {
+    return NextResponse.json({ message: "At least one registrant id is required." }, { status: 400 })
+  }
+
+  try {
+    const result = await prisma.registrant.updateMany({
+      where: {
+        id: { in: ids },
+      },
+      data: {
+        printedAt: new Date(),
+      },
+    })
+
+    return NextResponse.json({
+      message: ids.length === 1 ? "Registrant marked as printed." : "Registrants marked as printed.",
+      updatedCount: result.count,
+    })
+  } catch (error: unknown) {
+    return NextResponse.json(
+      {
+        message: "Failed to mark registrant(s) as printed.",
         details: String(error).slice(0, 300),
       },
       { status: 500 }
