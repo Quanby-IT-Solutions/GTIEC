@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -143,6 +144,52 @@ export function RegistrationForm({
                 required
                 className="h-11 border-chart-1/30 bg-white text-slate-800 placeholder:text-slate-400"
               />
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="contact_no" className="text-slate-700">
+                Contact no
+              </Label>
+              <Input
+                id="contact_no"
+                value={form.contact_no}
+                onChange={(event) => setField("contact_no", event.target.value)}
+                placeholder="09171234567"
+                required
+                className="h-11 border-chart-1/30 bg-white text-slate-800 placeholder:text-slate-400"
+              />
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="email" className="text-slate-700">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={form.email}
+                onChange={(event) => setField("email", event.target.value)}
+                placeholder="juan@example.com"
+                required
+                className="h-11 border-chart-1/30 bg-white text-slate-800 placeholder:text-slate-400"
+              />
+            </div>
+
+            <div className="flex items-start gap-3 rounded-md border border-chart-1/20 bg-white/70 p-3">
+              <Checkbox
+                id="receive_mail"
+                checked={form.receive_mail}
+                onCheckedChange={(checked) =>
+                  setField("receive_mail", checked === true)
+                }
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="receive_mail"
+                className="cursor-pointer text-sm leading-snug text-slate-700"
+              >
+                I agree to receive event updates and announcements through email.
+              </Label>
             </div>
 
             <Button

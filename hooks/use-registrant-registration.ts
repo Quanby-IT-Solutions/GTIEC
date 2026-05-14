@@ -7,11 +7,17 @@ import { registerRegistrant, type RegistrantPayload } from "@/hooks/registration
 type FormState = {
   full_name: string
   company_name: string
+  contact_no: string
+  email: string
+  receive_mail: boolean
 }
 
 const initialState: FormState = {
   full_name: "",
   company_name: "",
+  contact_no: "",
+  email: "",
+  receive_mail: false,
 }
 
 export function useRegistrantRegistration() {
@@ -32,6 +38,9 @@ export function useRegistrantRegistration() {
     const payload: RegistrantPayload = {
       full_name: form.full_name.trim(),
       company_name: form.company_name.trim(),
+      contact_no: form.contact_no.trim(),
+      email: form.email.trim(),
+      receive_mail: form.receive_mail,
     }
 
     const result = await registerRegistrant(payload)

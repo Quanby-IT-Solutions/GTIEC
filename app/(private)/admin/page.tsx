@@ -28,6 +28,11 @@ type Registrant = {
   fullName?: string | null;
   company_name?: string | null;
   companyName?: string | null;
+  contact_no?: string | null;
+  contactNo?: string | null;
+  email?: string | null;
+  receive_mail?: boolean | null;
+  receiveMail?: boolean | null;
   printedAt?: string | null;
 };
 
@@ -307,8 +312,11 @@ export default function AdminPage() {
         if (search.trim().length > 0) {
           params.set("q", search.trim());
         }
+        params.set("_t", String(Date.now()));
 
-        const res = await fetch(`/api/registrants?${params.toString()}`);
+        const res = await fetch(`/api/registrants?${params.toString()}`, {
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error("Failed to fetch");
         const json = await res.json();
         if (!mounted) return;
@@ -329,21 +337,43 @@ export default function AdminPage() {
   useEffect(() => {
     if (!supabase) return;
 
+    const handleRealtimeChange = () => {
+      setPage(1);
+      setRefreshTick((current) => current + 1);
+    };
+
     const channel = supabase
       .channel("registrants-realtime")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "Registrant" },
-        () => {
-          setRefreshTick((current) => current + 1);
-        },
+        { event: "*", schema: "public", table: "Registrant" },
+        handleRealtimeChange,
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registrants" },
+        handleRealtimeChange,
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRefreshTick((current) => current + 1);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);
     };
   }, [supabase]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setRefreshTick((current) => current + 1);
+    }, 3000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
 
   function prev() {
     setPage((p) => Math.max(1, p - 1));
@@ -427,7 +457,7 @@ export default function AdminPage() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search full name or company"
+            placeholder="Search name, company, contact, or email"
             className="h-9 w-[280px]"
           />
           <Select value={sortBy} onValueChange={setSortBy}>
@@ -438,6 +468,8 @@ export default function AdminPage() {
               <SelectItem value="createdAt">Registered date</SelectItem>
               <SelectItem value="full_name">Full name</SelectItem>
               <SelectItem value="company_name">Company name</SelectItem>
+              <SelectItem value="contact_no">Contact no</SelectItem>
+              <SelectItem value="email">Email</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -502,6 +534,9 @@ export default function AdminPage() {
               </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Company</TableHead>
+              <TableHead>Contact No</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Receive Mail</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
@@ -522,6 +557,15 @@ export default function AdminPage() {
                 </TableCell>
                 <TableCell>{getPrintableName(r)}</TableCell>
                 <TableCell>{getPrintableCompanyName(r)}</TableCell>
+                <TableCell>{r.contact_no ?? r.contactNo ?? "—"}</TableCell>
+                <TableCell>{r.email ?? "—"}</TableCell>
+                <TableCell>
+                  {(r.receive_mail ?? r.receiveMail) ? (
+                    <Badge variant="secondary">Yes</Badge>
+                  ) : (
+                    <Badge variant="outline">No</Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   {r.printedAt ? (
                     <Badge variant="secondary">Printed</Badge>
@@ -554,7 +598,7 @@ export default function AdminPage() {
             {registrants.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={8}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   {loading ? "Loading..." : "No registrants"}
