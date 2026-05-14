@@ -21,12 +21,10 @@ import {
 import { Input } from "../../../components/ui/input";
 
 type Registrant = {
-  id: string;
   full_name?: string | null;
   fullName?: string | null;
   company_name?: string | null;
   companyName?: string | null;
-  createdAt?: string | null;
 };
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -43,6 +41,10 @@ function getPrintableName(registrant: Registrant) {
 
 function getPrintableCompanyName(registrant: Registrant) {
   return registrant.company_name ?? registrant.companyName ?? "—";
+}
+
+function getRegistrantKey(registrant: Registrant, index: number) {
+  return `${getPrintableName(registrant)}::${getPrintableCompanyName(registrant)}::${index}`;
 }
 
 function escapeHtml(value: string) {
@@ -238,13 +240,13 @@ function printRegistrants(registrants: Registrant[]) {
 
 export default function AdminPage() {
   const [registrants, setRegistrants] = useState<Registrant[]>([]);
-  const [selectedRegistrantIds, setSelectedRegistrantIds] = useState<string[]>(
+  const [selectedRegistrantKeys, setSelectedRegistrantKeys] = useState<string[]>(
     [],
   );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortBy, setSortBy] = useState("full_name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -254,16 +256,21 @@ export default function AdminPage() {
     return Math.max(1, Math.ceil(total / pageSize));
   }, [total, pageSize]);
   const selectedRegistrantIdSet = useMemo(
-    () => new Set(selectedRegistrantIds),
-    [selectedRegistrantIds],
+    () => new Set(selectedRegistrantKeys),
+    [selectedRegistrantKeys],
   );
   const selectedRegistrants = useMemo(
-    () => registrants.filter((registrant) => selectedRegistrantIdSet.has(registrant.id)),
+    () =>
+      registrants.filter((registrant, index) =>
+        selectedRegistrantIdSet.has(getRegistrantKey(registrant, index)),
+      ),
     [registrants, selectedRegistrantIdSet],
   );
   const allVisibleSelected =
     registrants.length > 0 &&
-    registrants.every((registrant) => selectedRegistrantIdSet.has(registrant.id));
+    registrants.every((registrant, index) =>
+      selectedRegistrantIdSet.has(getRegistrantKey(registrant, index)),
+    );
 
   useEffect(() => {
     setPage(1);
@@ -308,20 +315,22 @@ export default function AdminPage() {
   function next() {
     setPage((p) => (totalPages ? Math.min(totalPages, p + 1) : p + 1));
   }
-  function toggleRegistrantSelection(registrantId: string, checked: boolean) {
-    setSelectedRegistrantIds((current) =>
+  function toggleRegistrantSelection(registrantKey: string, checked: boolean) {
+    setSelectedRegistrantKeys((current) =>
       checked
-        ? [...new Set([...current, registrantId])]
-        : current.filter((id) => id !== registrantId),
+        ? [...new Set([...current, registrantKey])]
+        : current.filter((key) => key !== registrantKey),
     );
   }
   function toggleVisibleSelection(checked: boolean) {
-    const visibleIds = registrants.map((registrant) => registrant.id);
+    const visibleKeys = registrants.map((registrant, index) =>
+      getRegistrantKey(registrant, index),
+    );
 
-    setSelectedRegistrantIds((current) =>
+    setSelectedRegistrantKeys((current) =>
       checked
-        ? [...new Set([...current, ...visibleIds])]
-        : current.filter((id) => !visibleIds.includes(id)),
+        ? [...new Set([...current, ...visibleKeys])]
+        : current.filter((key) => !visibleKeys.includes(key)),
     );
   }
 
@@ -396,31 +405,27 @@ export default function AdminPage() {
                   }
                 />
               </TableHead>
-              <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Company</TableHead>
-              <TableHead>Registered</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {registrants.map((r) => (
-              <TableRow key={r.id}>
+            {registrants.map((r, index) => {
+              const rowKey = getRegistrantKey(r, index);
+              return (
+              <TableRow key={rowKey}>
                 <TableCell>
                   <Checkbox
                     aria-label={`Select ${getPrintableName(r)}`}
-                    checked={selectedRegistrantIdSet.has(r.id)}
+                    checked={selectedRegistrantIdSet.has(rowKey)}
                     onCheckedChange={(checked) =>
-                      toggleRegistrantSelection(r.id, checked === true)
+                      toggleRegistrantSelection(rowKey, checked === true)
                     }
                   />
                 </TableCell>
-                <TableCell className="font-medium text-sm">{r.id}</TableCell>
                 <TableCell>{getPrintableName(r)}</TableCell>
                 <TableCell>{getPrintableCompanyName(r)}</TableCell>
-                <TableCell>
-                  {r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}
-                </TableCell>
                 <TableCell>
                   <Button
                     variant="ghost"
@@ -430,11 +435,11 @@ export default function AdminPage() {
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
             {registrants.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={4}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   {loading ? "Loading..." : "No registrants"}

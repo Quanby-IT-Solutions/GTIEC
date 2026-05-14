@@ -76,6 +76,10 @@ export async function GET(request: Request) {
     const [items, total] = await Promise.all([
       prisma.registrant.findMany({
         where,
+        select: {
+          full_name: true,
+          company_name: true,
+        },
         orderBy: {
           [sortBy]: sortDir,
         },
@@ -87,12 +91,10 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       items: items.map((it) => ({
-        id: it.id,
         full_name: it.full_name,
         fullName: it.full_name,
         company_name: it.company_name,
         companyName: it.company_name,
-        createdAt: it.createdAt,
       })),
       total,
     })
