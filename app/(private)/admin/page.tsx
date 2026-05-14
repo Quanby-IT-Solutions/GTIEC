@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 import {
   Table,
   TableBody,
@@ -21,6 +22,7 @@ import {
 import { Input } from "../../../components/ui/input";
 
 type Registrant = {
+  id?: string | null;
   full_name?: string | null;
   fullName?: string | null;
   company_name?: string | null;
@@ -44,6 +46,7 @@ function getPrintableCompanyName(registrant: Registrant) {
 }
 
 function getRegistrantKey(registrant: Registrant, index: number) {
+  if (registrant.id) return registrant.id;
   return `${getPrintableName(registrant)}::${getPrintableCompanyName(registrant)}::${index}`;
 }
 
@@ -250,6 +253,17 @@ export default function AdminPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const supabase = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !anonKey) return null;
+
+    return createClient(url, anonKey);
+  }, []);
 
   const totalPages = useMemo(() => {
     if (total == null) return null;
@@ -279,6 +293,7 @@ export default function AdminPage() {
   useEffect(() => {
     let mounted = true;
     async function load() {
+      if (!mounted) return;
       setLoading(true);
       try {
         const params = new URLSearchParams({
@@ -307,7 +322,26 @@ export default function AdminPage() {
     return () => {
       mounted = false;
     };
-  }, [page, pageSize, search, sortBy, sortDir]);
+  }, [page, pageSize, search, sortBy, sortDir, refreshTick]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel("registrants-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Registrant" },
+        () => {
+          setRefreshTick((current) => current + 1);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   function prev() {
     setPage((p) => Math.max(1, p - 1));
@@ -332,6 +366,36 @@ export default function AdminPage() {
         ? [...new Set([...current, ...visibleKeys])]
         : current.filter((key) => !visibleKeys.includes(key)),
     );
+  }
+
+  async function deleteRegistrantIds(ids: string[]) {
+    if (ids.length === 0) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/registrants", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error("Failed to delete registrants");
+      setSelectedRegistrantKeys((current) =>
+        current.filter((key) => !ids.includes(key)),
+      );
+      setRefreshTick((current) => current + 1);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function deleteSingleRegistrant(registrant: Registrant) {
+    if (!registrant.id) return;
+    await deleteRegistrantIds([registrant.id]);
+  }
+
+  async function deleteSelectedRegistrants() {
+    await deleteRegistrantIds(selectedRegistrantKeys);
   }
 
   return (
@@ -389,6 +453,13 @@ export default function AdminPage() {
           >
             Print selected ({selectedRegistrants.length})
           </Button>
+          <Button
+            variant="destructive"
+            disabled={selectedRegistrantKeys.length === 0 || deleting}
+            onClick={deleteSelectedRegistrants}
+          >
+            Delete selected ({selectedRegistrantKeys.length})
+          </Button>
         </div>
       </div>
 
@@ -427,12 +498,21 @@ export default function AdminPage() {
                 <TableCell>{getPrintableName(r)}</TableCell>
                 <TableCell>{getPrintableCompanyName(r)}</TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    onClick={() => printRegistrants([r])}
-                  >
-                    Print
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => printRegistrants([r])}
+                    >
+                      Print
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => deleteSingleRegistrant(r)}
+                      disabled={!r.id || deleting}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             )})}
