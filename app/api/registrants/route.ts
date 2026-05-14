@@ -70,6 +70,43 @@ export async function POST(request: Request) {
     lastErrorText = errorText
 
     if (insertResponse.status !== 404) {
+      const needsLegacyRequiredFields =
+        errorText.includes("null value in column") &&
+        (errorText.includes("\"email\"") ||
+          errorText.includes("\"designation\"") ||
+          errorText.includes("\"mobile_no\""))
+
+      if (needsLegacyRequiredFields) {
+        const legacyCompatiblePayload = {
+          ...payload,
+          email: `${payload.id}@legacy.local`,
+          designation: "N/A",
+          mobile_no: "N/A",
+          receive_updates: false,
+        }
+
+        const legacyInsertResponse = await fetch(
+          `${supabaseUrl}/rest/v1/${endpoint}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: serviceRoleKey,
+              Authorization: `Bearer ${serviceRoleKey}`,
+              Prefer: "return=minimal",
+            },
+            body: JSON.stringify(legacyCompatiblePayload),
+          }
+        )
+
+        if (legacyInsertResponse.ok) {
+          return NextResponse.json(
+            { message: "Your registration has been submitted." },
+            { status: 201 }
+          )
+        }
+      }
+
       return NextResponse.json(
         {
           message: "Failed to save registration.",
