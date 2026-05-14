@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "GTIEC Event Registration System built with Next.js 13 and TypeScript",
   icons: {
-    icon: "/images/circle-logo.png",
+    icon: "/images/qby.png",
   },
 };
 

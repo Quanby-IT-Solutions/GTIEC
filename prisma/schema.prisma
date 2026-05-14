@@ -21,9 +21,11 @@ model Admin {
 }
 
 model Registrant {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   full_name    String
   company_name String
-  createdAt    DateTime @default(now())
+  contact_no   String?   @unique
+  email        String?   @unique
+  createdAt    DateTime  @default(now())
   printedAt    DateTime?
 }
