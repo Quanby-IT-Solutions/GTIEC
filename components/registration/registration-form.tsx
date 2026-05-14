@@ -186,7 +186,7 @@ export function RegistrationForm({
               />
               <Label
                 htmlFor="receive_mail"
-                className="cursor-pointer text-sm leading-snug text-slate-700"
+                className="flex-1 cursor-pointer select-none text-sm leading-snug text-slate-700"
               >
                 I agree to receive event updates and announcements through email.
               </Label>
