@@ -145,6 +145,35 @@ export function RegistrationForm({
               />
             </div>
 
+            <div className="grid gap-3">
+              <Label htmlFor="contact_no" className="text-slate-700">
+                Contact no
+              </Label>
+              <Input
+                id="contact_no"
+                value={form.contact_no}
+                onChange={(event) => setField("contact_no", event.target.value)}
+                placeholder="09171234567"
+                required
+                className="h-11 border-chart-1/30 bg-white text-slate-800 placeholder:text-slate-400"
+              />
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="email" className="text-slate-700">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={form.email}
+                onChange={(event) => setField("email", event.target.value)}
+                placeholder="juan@example.com"
+                required
+                className="h-11 border-chart-1/30 bg-white text-slate-800 placeholder:text-slate-400"
+              />
+            </div>
+
             <Button
               type="submit"
               disabled={isSubmitting}

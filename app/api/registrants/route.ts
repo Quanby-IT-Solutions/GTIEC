@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma"
 type RegistrantBody = {
   full_name?: string
   company_name?: string
+  contact_no?: string
+  email?: string
 }
 
 type DeleteBody = {
@@ -15,6 +17,8 @@ type DeleteBody = {
 type MarkPrintedBody = {
   id?: string
   ids?: string[]
+  contact_no?: string
+  email?: string
 }
 
 export async function POST(request: Request) {
@@ -26,10 +30,12 @@ export async function POST(request: Request) {
 
   const full_name = body.full_name?.trim() ?? ""
   const company_name = body.company_name?.trim() ?? ""
+  const contact_no = body.contact_no?.trim() ?? ""
+  const email = body.email?.trim() ?? ""
 
-  if (!full_name || !company_name) {
+  if (!full_name || !company_name || !contact_no || !email) {
     return NextResponse.json(
-      { message: "Full name and company name are required." },
+      { message: "Full name, company name, contact no, and email are required." },
       { status: 400 }
     )
   }
@@ -39,6 +45,8 @@ export async function POST(request: Request) {
       data: {
         full_name,
         company_name,
+        contact_no,
+        email,
       },
     })
 
@@ -69,7 +77,7 @@ export async function GET(request: Request) {
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 10
   const skip = (page - 1) * limit
 
-  const allowedSortBy = new Set(["createdAt", "full_name", "company_name"])
+  const allowedSortBy = new Set(["createdAt", "full_name", "company_name", "contact_no", "email"])
   const sortBy = allowedSortBy.has(sortByParam) ? sortByParam : "createdAt"
   const sortDir = sortDirParam === "asc" ? "asc" : "desc"
 
@@ -79,6 +87,8 @@ export async function GET(request: Request) {
           OR: [
             { full_name: { contains: query, mode: "insensitive" as const } },
             { company_name: { contains: query, mode: "insensitive" as const } },
+            { contact_no: { contains: query, mode: "insensitive" as const } },
+            { email: { contains: query, mode: "insensitive" as const } },
           ],
         }
       : undefined
@@ -90,6 +100,8 @@ export async function GET(request: Request) {
           id: true,
           full_name: true,
           company_name: true,
+          contact_no: true,
+          email: true,
           printedAt: true,
         },
         orderBy: {
@@ -108,6 +120,9 @@ export async function GET(request: Request) {
         fullName: it.full_name,
         company_name: it.company_name,
         companyName: it.company_name,
+        contact_no: it.contact_no,
+        contactNo: it.contact_no,
+        email: it.email,
         printedAt: it.printedAt,
       })),
       total,
@@ -139,14 +154,29 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "At least one registrant id is required." }, { status: 400 })
   }
 
+  const contact_no = body.contact_no?.trim()
+  const email = body.email?.trim()
+  const hasContactNoUpdate = typeof contact_no === "string"
+  const hasEmailUpdate = typeof email === "string"
+
+  const data: { printedAt: Date; contact_no?: string; email?: string } = {
+    printedAt: new Date(),
+  }
+
+  if (hasContactNoUpdate) {
+    data.contact_no = contact_no || ""
+  }
+
+  if (hasEmailUpdate) {
+    data.email = email || ""
+  }
+
   try {
     const result = await prisma.registrant.updateMany({
       where: {
         id: { in: ids },
       },
-      data: {
-        printedAt: new Date(),
-      },
+      data,
     })
 
     return NextResponse.json({
