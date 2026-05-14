@@ -28,6 +28,9 @@ type Registrant = {
   fullName?: string | null;
   company_name?: string | null;
   companyName?: string | null;
+  contact_no?: string | null;
+  contactNo?: string | null;
+  email?: string | null;
   printedAt?: string | null;
 };
 
@@ -329,21 +332,42 @@ export default function AdminPage() {
   useEffect(() => {
     if (!supabase) return;
 
+    const handleRealtimeChange = () => {
+      setRefreshTick((current) => current + 1);
+    };
+
     const channel = supabase
       .channel("registrants-realtime")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "Registrant" },
-        () => {
-          setRefreshTick((current) => current + 1);
-        },
+        { event: "*", schema: "public", table: "Registrant" },
+        handleRealtimeChange,
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registrants" },
+        handleRealtimeChange,
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRefreshTick((current) => current + 1);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);
     };
   }, [supabase]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setRefreshTick((current) => current + 1);
+    }, 15000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
 
   function prev() {
     setPage((p) => Math.max(1, p - 1));
@@ -502,6 +526,8 @@ export default function AdminPage() {
               </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Company</TableHead>
+              <TableHead>Contact No</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
@@ -522,6 +548,8 @@ export default function AdminPage() {
                 </TableCell>
                 <TableCell>{getPrintableName(r)}</TableCell>
                 <TableCell>{getPrintableCompanyName(r)}</TableCell>
+                <TableCell>{r.contact_no ?? r.contactNo ?? "—"}</TableCell>
+                <TableCell>{r.email ?? "—"}</TableCell>
                 <TableCell>
                   {r.printedAt ? (
                     <Badge variant="secondary">Printed</Badge>
@@ -554,7 +582,7 @@ export default function AdminPage() {
             {registrants.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={7}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   {loading ? "Loading..." : "No registrants"}
