@@ -24,21 +24,15 @@ type Registrant = {
   id: string;
   full_name?: string | null;
   fullName?: string | null;
-  designation?: string | null;
   company_name?: string | null;
   companyName?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  email?: string | null;
   createdAt?: string | null;
 };
 
 const DEFAULT_PAGE_SIZE = 10;
 
 function getPrintableName(registrant: Registrant) {
-  const nameFromParts =
-    `${registrant.firstName ?? ""} ${registrant.lastName ?? ""}`.trim();
-  const candidates = [registrant.full_name, registrant.fullName, nameFromParts];
+  const candidates = [registrant.full_name, registrant.fullName];
 
   return (
     candidates.find(
@@ -339,7 +333,7 @@ export default function AdminPage() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search name, email, designation, company"
+            placeholder="Search full name or company"
             className="h-9 w-[280px]"
           />
           <Select value={sortBy} onValueChange={setSortBy}>
@@ -349,8 +343,6 @@ export default function AdminPage() {
             <SelectContent>
               <SelectItem value="createdAt">Registered date</SelectItem>
               <SelectItem value="full_name">Full name</SelectItem>
-              <SelectItem value="email">Email</SelectItem>
-              <SelectItem value="designation">Designation</SelectItem>
               <SelectItem value="company_name">Company name</SelectItem>
             </SelectContent>
           </Select>
@@ -406,7 +398,7 @@ export default function AdminPage() {
               </TableHead>
               <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Company</TableHead>
               <TableHead>Registered</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
@@ -424,10 +416,8 @@ export default function AdminPage() {
                   />
                 </TableCell>
                 <TableCell className="font-medium text-sm">{r.id}</TableCell>
-                <TableCell>
-                  {`${r.firstName ?? ""} ${r.lastName ?? ""}`.trim() || "—"}
-                </TableCell>
-                <TableCell>{r.email ?? "—"}</TableCell>
+                <TableCell>{getPrintableName(r)}</TableCell>
+                <TableCell>{getPrintableCompanyName(r)}</TableCell>
                 <TableCell>
                   {r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}
                 </TableCell>

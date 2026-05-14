@@ -21,12 +21,8 @@ model Admin {
 }
 
 model Registrant {
-  id              String   @id @default(uuid())
-  full_name       String
-  email           String   @unique
-  designation     String
-  company_name    String
-  mobile_no       String
-  receive_updates Boolean  @default(false)
-  createdAt       DateTime @default(now())
+  id           String   @id @default(uuid())
+  full_name    String
+  company_name String
+  createdAt    DateTime @default(now())
 }

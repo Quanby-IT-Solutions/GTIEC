@@ -2,11 +2,7 @@ import { NextResponse } from "next/server"
 
 type RegistrantBody = {
   full_name?: string
-  email?: string
-  designation?: string
   company_name?: string
-  mobile_no?: string
-  allow_emails?: boolean
 }
 
 function getServiceRoleKey() {
@@ -36,32 +32,12 @@ export async function POST(request: Request) {
   const payload = {
     id: crypto.randomUUID(),
     full_name: body.full_name?.trim() ?? "",
-    email: body.email?.trim() ?? "",
-    designation: body.designation?.trim() ?? "",
     company_name: body.company_name?.trim() ?? "",
-    mobile_no: body.mobile_no?.trim() ?? "",
-    receive_updates: body.allow_emails === true,
-  }
-  const payloadWithoutReceiveUpdates = {
-    id: payload.id,
-    full_name: payload.full_name,
-    email: payload.email,
-    designation: payload.designation,
-    company_name: payload.company_name,
-    mobile_no: payload.mobile_no,
   }
 
-  const hasEmptyField = [
-    payload.full_name,
-    payload.email,
-    payload.designation,
-    payload.company_name,
-    payload.mobile_no,
-  ].some((value) => value.length === 0)
-
-  if (hasEmptyField) {
+  if (!payload.full_name || !payload.company_name) {
     return NextResponse.json(
-      { message: "All registration fields are required." },
+      { message: "Full name and company name are required." },
       { status: 400 }
     )
   }
@@ -94,41 +70,12 @@ export async function POST(request: Request) {
     lastErrorText = errorText
 
     if (insertResponse.status !== 404) {
-      const duplicateEmail =
-        errorText.includes("duplicate key") ||
-        errorText.includes("unique constraint")
-      const missingReceiveUpdatesColumn =
-        errorText.includes("receive_updates") &&
-        (errorText.includes("does not exist") || errorText.includes("column"))
-
-      if (missingReceiveUpdatesColumn) {
-        const fallbackInsertResponse = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: serviceRoleKey,
-            Authorization: `Bearer ${serviceRoleKey}`,
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify(payloadWithoutReceiveUpdates),
-        })
-
-        if (fallbackInsertResponse.ok) {
-          return NextResponse.json(
-            { message: "Your registration has been submitted." },
-            { status: 201 }
-          )
-        }
-      }
-
       return NextResponse.json(
         {
-          message: duplicateEmail
-            ? "This email is already registered."
-            : "Failed to save registration.",
+          message: "Failed to save registration.",
           details: errorText.slice(0, 300),
         },
-        { status: duplicateEmail ? 409 : 500 }
+        { status: 500 }
       )
     }
   }
@@ -160,16 +107,12 @@ export async function GET(request: Request) {
   const query = (url.searchParams.get("q") ?? "").trim()
   const sortByParam = (url.searchParams.get("sortBy") ?? "createdAt").trim()
   const sortDirParam = (url.searchParams.get("sortDir") ?? "desc").trim().toLowerCase()
+
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 10
   const offset = (page - 1) * limit
-  const allowedSortBy = new Set([
-    "createdAt",
-    "full_name",
-    "email",
-    "designation",
-    "company_name",
-  ])
+
+  const allowedSortBy = new Set(["createdAt", "full_name", "company_name"])
   const sortBy = allowedSortBy.has(sortByParam) ? sortByParam : "createdAt"
   const sortDir = sortDirParam === "asc" ? "asc" : "desc"
 
@@ -184,8 +127,6 @@ export async function GET(request: Request) {
       const searchFilter = query
         ? `&or=(${[
             `full_name.ilike.*${encodedQuery}*`,
-            `email.ilike.*${encodedQuery}*`,
-            `designation.ilike.*${encodedQuery}*`,
             `company_name.ilike.*${encodedQuery}*`,
           ].join(",")})`
         : ""
@@ -215,34 +156,19 @@ export async function GET(request: Request) {
         continue
       }
 
-      // parse json
       const rawItems = JSON.parse(text || "[]")
+      const items = (rawItems as any[]).map((it) => ({
+        id: it.id ?? it.uuid ?? null,
+        full_name: it.full_name ?? it.fullName ?? null,
+        fullName: it.full_name ?? it.fullName ?? null,
+        company_name: it.company_name ?? null,
+        companyName: it.company_name ?? null,
+        createdAt: it.createdAt ?? it.created_at ?? null,
+      }))
 
-      // normalize fields to the shape the UI expects
-      const items = (rawItems as any[]).map((it) => {
-        const fullName = it.full_name ?? it.fullName ?? null
-        const parts = String(fullName ?? "").trim().split(/\s+/)
-        const firstName = parts.slice(0, -1).join(" ") || parts[0] || null
-        const lastName = parts.length > 1 ? parts[parts.length - 1] : null
-        return {
-          id: it.id ?? it.uuid ?? null,
-          full_name: fullName,
-          fullName: fullName,
-          designation: it.designation ?? null,
-          company_name: it.company_name ?? null,
-          companyName: it.company_name ?? null,
-          firstName,
-          lastName,
-          email: it.email ?? null,
-          createdAt: it.createdAt ?? it.created_at ?? null,
-        }
-      })
-
-      // Try to read total from Content-Range header
       const contentRange = res.headers.get("content-range")
       let total: number | null = null
       if (contentRange) {
-        // content-range format: 0-9/123
         const parts = contentRange.split("/")
         const totalPart = parts[1]
         const n = Number(totalPart)
