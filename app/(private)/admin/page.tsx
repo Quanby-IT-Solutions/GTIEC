@@ -24,6 +24,7 @@ import { Badge } from "../../../components/ui/badge";
 
 type Registrant = {
   id?: string | null;
+  createdAt?: string | null;
   full_name?: string | null;
   fullName?: string | null;
   company_name?: string | null;
@@ -50,6 +51,21 @@ function getPrintableName(registrant: Registrant) {
 
 function getPrintableCompanyName(registrant: Registrant) {
   return registrant.company_name ?? registrant.companyName ?? "—";
+}
+
+function getPrintableCreatedAt(registrant: Registrant) {
+  if (!registrant.createdAt) return "—";
+  const date = new Date(registrant.createdAt);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).format(date);
 }
 
 function getRegistrantKey(registrant: Registrant, index: number) {
@@ -256,11 +272,13 @@ export default function AdminPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
+  const [registeredDate, setRegisteredDate] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
 
   const supabase = useMemo(() => {
@@ -295,7 +313,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, sortBy, sortDir]);
+  }, [search, registeredDate, sortBy, sortDir]);
 
   useEffect(() => {
     let mounted = true;
@@ -311,6 +329,9 @@ export default function AdminPage() {
         });
         if (search.trim().length > 0) {
           params.set("q", search.trim());
+        }
+        if (registeredDate) {
+          params.set("date", registeredDate);
         }
         params.set("_t", String(Date.now()));
 
@@ -332,7 +353,7 @@ export default function AdminPage() {
     return () => {
       mounted = false;
     };
-  }, [page, pageSize, search, sortBy, sortDir, refreshTick]);
+  }, [page, pageSize, search, registeredDate, sortBy, sortDir, refreshTick]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -449,6 +470,75 @@ export default function AdminPage() {
     await deleteRegistrantIds(selectedRegistrantKeys);
   }
 
+  async function exportFilteredCsv() {
+    setExporting(true);
+    try {
+      const limit = Math.max(total ?? 0, 1000);
+      const params = new URLSearchParams({
+        limit: String(limit),
+        page: "1",
+        sortBy,
+        sortDir,
+      });
+      if (search.trim().length > 0) {
+        params.set("q", search.trim());
+      }
+      if (registeredDate) {
+        params.set("date", registeredDate);
+      }
+
+      const res = await fetch(`/api/registrants?${params.toString()}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to export registrants");
+      const json = await res.json();
+      const items = (json.items ?? []) as Registrant[];
+
+      const escapeCsv = (value: unknown) => {
+        const text = String(value ?? "");
+        return `"${text.replace(/"/g, "\"\"")}"`;
+      };
+
+      const header = [
+        "Full Name",
+        "Company Name",
+        "Contact No",
+        "Email",
+        "Receive Mail",
+        "Registered At",
+        "Printed At",
+      ];
+      const rows = items.map((item) => [
+        item.full_name ?? item.fullName ?? "",
+        item.company_name ?? item.companyName ?? "",
+        item.contact_no ?? item.contactNo ?? "",
+        item.email ?? "",
+        (item.receive_mail ?? item.receiveMail) ? "Yes" : "No",
+        getPrintableCreatedAt(item),
+        item.printedAt ? new Date(item.printedAt).toLocaleString() : "",
+      ]);
+
+      const csvContent = [
+        header.map(escapeCsv).join(","),
+        ...rows.map((row) => row.map(escapeCsv).join(",")),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `registrants-${registeredDate || "all"}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="p-8">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -460,6 +550,19 @@ export default function AdminPage() {
             placeholder="Search name, company, contact, or email"
             className="h-9 w-[280px]"
           />
+          <Input
+            type="date"
+            value={registeredDate}
+            onChange={(event) => setRegisteredDate(event.target.value)}
+            className="h-9 w-[180px]"
+          />
+          <Button
+            variant="outline"
+            onClick={() => setRegisteredDate("")}
+            disabled={!registeredDate}
+          >
+            Clear date
+          </Button>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="Sort by" />
@@ -480,8 +583,8 @@ export default function AdminPage() {
               <SelectValue placeholder="Direction" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="asc">Asc</SelectItem>
-              <SelectItem value="desc">Desc</SelectItem>
+              <SelectItem value="asc">Oldest first</SelectItem>
+              <SelectItem value="desc">Newest first</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -516,6 +619,13 @@ export default function AdminPage() {
           >
             Delete selected ({selectedRegistrantKeys.length})
           </Button>
+          <Button
+            variant="outline"
+            disabled={exporting || loading}
+            onClick={exportFilteredCsv}
+          >
+            {exporting ? "Exporting..." : "Export CSV"}
+          </Button>
         </div>
       </div>
 
@@ -533,6 +643,7 @@ export default function AdminPage() {
                 />
               </TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>Registered At</TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Contact No</TableHead>
               <TableHead>Email</TableHead>
@@ -556,6 +667,7 @@ export default function AdminPage() {
                   />
                 </TableCell>
                 <TableCell>{getPrintableName(r)}</TableCell>
+                <TableCell>{getPrintableCreatedAt(r)}</TableCell>
                 <TableCell>{getPrintableCompanyName(r)}</TableCell>
                 <TableCell>{r.contact_no ?? r.contactNo ?? "—"}</TableCell>
                 <TableCell>{r.email ?? "—"}</TableCell>
@@ -598,7 +710,7 @@ export default function AdminPage() {
             {registrants.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   {loading ? "Loading..." : "No registrants"}

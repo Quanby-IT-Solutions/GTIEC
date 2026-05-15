@@ -71,6 +71,7 @@ export async function GET(request: Request) {
   const pageParam = Number(url.searchParams.get("page") ?? "1")
   const limitParam = Number(url.searchParams.get("limit") ?? "10")
   const query = (url.searchParams.get("q") ?? "").trim()
+  const dateParam = (url.searchParams.get("date") ?? "").trim()
   const sortByParam = (url.searchParams.get("sortBy") ?? "createdAt").trim()
   const sortDirParam = (url.searchParams.get("sortDir") ?? "desc").trim().toLowerCase()
 
@@ -83,22 +84,42 @@ export async function GET(request: Request) {
   const sortDir = sortDirParam === "asc" ? "asc" : "desc"
 
   try {
-    const where = query
-      ? {
-          OR: [
-            { full_name: { contains: query, mode: "insensitive" as const } },
-            { company_name: { contains: query, mode: "insensitive" as const } },
-            { contact_no: { contains: query, mode: "insensitive" as const } },
-            { email: { contains: query, mode: "insensitive" as const } },
-          ],
+    const where: {
+      OR?: Array<
+        | { full_name: { contains: string; mode: "insensitive" } }
+        | { company_name: { contains: string; mode: "insensitive" } }
+        | { contact_no: { contains: string; mode: "insensitive" } }
+        | { email: { contains: string; mode: "insensitive" } }
+      >
+      createdAt?: { gte: Date; lt: Date }
+    } = {}
+
+    if (query) {
+      where.OR = [
+        { full_name: { contains: query, mode: "insensitive" } },
+        { company_name: { contains: query, mode: "insensitive" } },
+        { contact_no: { contains: query, mode: "insensitive" } },
+        { email: { contains: query, mode: "insensitive" } },
+      ]
+    }
+
+    if (dateParam) {
+      const start = new Date(`${dateParam}T00:00:00`)
+      const end = new Date(`${dateParam}T23:59:59.999`)
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+        where.createdAt = {
+          gte: start,
+          lt: end,
         }
-      : undefined
+      }
+    }
 
     const [items, total] = await Promise.all([
       prisma.registrant.findMany({
-        where,
+        where: Object.keys(where).length > 0 ? where : undefined,
         select: {
           id: true,
+          createdAt: true,
           full_name: true,
           company_name: true,
           contact_no: true,
@@ -112,12 +133,15 @@ export async function GET(request: Request) {
         skip,
         take: limit,
       }),
-      prisma.registrant.count({ where }),
+      prisma.registrant.count({
+        where: Object.keys(where).length > 0 ? where : undefined,
+      }),
     ])
 
     return NextResponse.json({
       items: items.map((it) => ({
         id: it.id,
+        createdAt: it.createdAt,
         full_name: it.full_name,
         fullName: it.full_name,
         company_name: it.company_name,
