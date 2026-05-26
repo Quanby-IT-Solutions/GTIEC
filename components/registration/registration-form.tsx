@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -172,6 +173,23 @@ export function RegistrationForm({
                 required
                 className="h-11 border-chart-1/30 bg-white text-slate-800 placeholder:text-slate-400"
               />
+            </div>
+
+            <div className="flex items-start gap-3 rounded-md border border-chart-1/20 bg-white/70 p-3">
+              <Checkbox
+                id="receive_mail"
+                checked={form.receive_mail}
+                onCheckedChange={(checked) =>
+                  setField("receive_mail", checked === true)
+                }
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="receive_mail"
+                className="flex-1 cursor-pointer select-none text-sm leading-snug text-slate-700"
+              >
+                I agree to receive event updates and announcements through email.
+              </Label>
             </div>
 
             <Button

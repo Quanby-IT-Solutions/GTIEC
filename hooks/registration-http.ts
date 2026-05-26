@@ -3,6 +3,7 @@ export type RegistrantPayload = {
   company_name: string
   contact_no: string
   email: string
+  receive_mail: boolean
 }
 
 type RegisterResult = {
