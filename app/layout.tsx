@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 export const metadata: Metadata = {
   title: "ECCP Event Registration",
   description:
-    "ECCP Event Registration System and Quanby White label rebuilt with Next.js 13 and TypeScript",
+    "ECCP Event Registrations System and Quanby White label rebuilt with Next.js 13 and TypeScript",
   icons: {
     icon: "/images/qby.png",
   },
