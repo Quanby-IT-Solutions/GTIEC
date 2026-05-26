@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Calendar, Clock, MapPin, Pin } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,9 +12,11 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const EVENT_DETAILS = {
-  name: "Cyber Resilience Summit 2026",
-  dates: "May 14–15, 2026",
-  time: "10:00 AM – 5:00 PM",
+  name: "ECCP Annual General Membership (AGM) Meeting & Sunset Socials 2025!",
+  date: "May 26, 2026",
+  time: "3:00 PM - 6:00 PM ONWARDS",
+  location:
+    "Marquis Building, Rizal Dr, Bonifacio Global City, Taguig, 1634 Metro Manila.",
 };
 
 interface EventAlertModalProps {
@@ -47,7 +50,7 @@ export function EventAlertModal({
             {/* Event Name */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-white/80 border border-chart-1/30">
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-chart-1 to-chart-4 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-lg font-bold">📌</span>
+                <Pin className="h-5 w-5 text-white" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-chart-4 uppercase tracking-wide">
@@ -59,17 +62,17 @@ export function EventAlertModal({
               </div>
             </div>
 
-            {/* Event Dates */}
+            {/* Event Date */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-white/80 border border-chart-2/30">
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-chart-2 to-chart-1 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-lg font-bold">📅</span>
+                <Calendar className="h-5 w-5 text-white" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-chart-1 uppercase tracking-wide">
-                  Dates
+                  Date
                 </p>
                 <p className="text-sm font-bold text-chart-5 mt-1">
-                  {EVENT_DETAILS.dates}
+                  {EVENT_DETAILS.date}
                 </p>
               </div>
             </div>
@@ -77,7 +80,7 @@ export function EventAlertModal({
             {/* Event Time */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-white/80 border border-chart-4/30">
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-chart-4 to-chart-2 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-lg font-bold">⏰</span>
+                <Clock className="h-5 w-5 text-white" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-chart-4 uppercase tracking-wide">
@@ -85,6 +88,21 @@ export function EventAlertModal({
                 </p>
                 <p className="text-sm font-bold text-chart-5 mt-1">
                   {EVENT_DETAILS.time}
+                </p>
+              </div>
+            </div>
+
+            {/* Event Location */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-white/80 border border-chart-1/30">
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-chart-1 to-chart-4 flex items-center justify-center flex-shrink-0">
+                <MapPin className="h-5 w-5 text-white" aria-hidden="true" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-chart-1 uppercase tracking-wide">
+                  Location
+                </p>
+                <p className="text-sm font-bold text-chart-5 mt-1">
+                  {EVENT_DETAILS.location}
                 </p>
               </div>
             </div>

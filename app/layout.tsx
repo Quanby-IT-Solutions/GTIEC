@@ -3,9 +3,9 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "GTIEC Event Registration",
+  title: "ECCP Event Registration",
   description:
-    "GTIEC Event Registration System built with Next.js 13 and TypeScript",
+    "ECCP Event Registration System built with Next.js 13 and TypeScript",
   icons: {
     icon: "/images/qby.png",
   },
