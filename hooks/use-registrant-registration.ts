@@ -9,6 +9,7 @@ type FormState = {
   company_name: string
   contact_no: string
   email: string
+  receive_mail: boolean
 }
 
 const initialState: FormState = {
@@ -16,6 +17,7 @@ const initialState: FormState = {
   company_name: "",
   contact_no: "",
   email: "",
+  receive_mail: false,
 }
 
 export function useRegistrantRegistration() {
@@ -38,6 +40,7 @@ export function useRegistrantRegistration() {
       company_name: form.company_name.trim(),
       contact_no: form.contact_no.trim(),
       email: form.email.trim(),
+      receive_mail: form.receive_mail,
     }
 
     const result = await registerRegistrant(payload)

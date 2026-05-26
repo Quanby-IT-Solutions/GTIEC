@@ -24,8 +24,9 @@ model Registrant {
   id           String    @id @default(uuid())
   full_name    String
   company_name String
-  contact_no   String?   @unique
-  email        String?   @unique
+  contact_no   String?   
+  email        String?   
+  receive_mail Boolean?  @default(false)
   createdAt    DateTime  @default(now())
   printedAt    DateTime?
 }
