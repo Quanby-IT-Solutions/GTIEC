@@ -97,12 +97,14 @@ function getPrintFontSize(value: string) {
 function getPrintFontSizes(registrants: Registrant[]) {
   const longestNameLength = Math.max(
     1,
-    ...registrants.map((registrant) => getPrintableName(registrant).trim().length),
+    ...registrants.map(
+      (registrant) => getPrintableName(registrant).trim().length,
+    ),
   );
   const longestCompanyLength = Math.max(
     1,
-    ...registrants.map((registrant) =>
-      getPrintableCompanyName(registrant).trim().length,
+    ...registrants.map(
+      (registrant) => getPrintableCompanyName(registrant).trim().length,
     ),
   );
 
@@ -266,9 +268,9 @@ function printRegistrants(registrants: Registrant[]) {
 
 export default function AdminPage() {
   const [registrants, setRegistrants] = useState<Registrant[]>([]);
-  const [selectedRegistrantKeys, setSelectedRegistrantKeys] = useState<string[]>(
-    [],
-  );
+  const [selectedRegistrantKeys, setSelectedRegistrantKeys] = useState<
+    string[]
+  >([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -496,7 +498,7 @@ export default function AdminPage() {
 
       const escapeCsv = (value: unknown) => {
         const text = String(value ?? "");
-        return `"${text.replace(/"/g, "\"\"")}"`;
+        return `"${text.replace(/"/g, '""')}"`;
       };
 
       const header = [
@@ -656,57 +658,58 @@ export default function AdminPage() {
             {registrants.map((r, index) => {
               const rowKey = getRegistrantKey(r, index);
               return (
-              <TableRow key={rowKey}>
-                <TableCell>
-                  <Checkbox
-                    aria-label={`Select ${getPrintableName(r)}`}
-                    checked={selectedRegistrantIdSet.has(rowKey)}
-                    onCheckedChange={(checked) =>
-                      toggleRegistrantSelection(rowKey, checked === true)
-                    }
-                  />
-                </TableCell>
-                <TableCell>{getPrintableName(r)}</TableCell>
-                <TableCell>{getPrintableCreatedAt(r)}</TableCell>
-                <TableCell>{getPrintableCompanyName(r)}</TableCell>
-                <TableCell>{r.contact_no ?? r.contactNo ?? "—"}</TableCell>
-                <TableCell>{r.email ?? "—"}</TableCell>
-                <TableCell>
-                  {(r.receive_mail ?? r.receiveMail) ? (
-                    <Badge variant="secondary">Yes</Badge>
-                  ) : (
-                    <Badge variant="outline">No</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {r.printedAt ? (
-                    <Badge variant="secondary">Printed</Badge>
-                  ) : (
-                    <Badge variant="outline">Not printed</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        printRegistrants([r]);
-                        void markRegistrantsPrinted([r]);
-                      }}
-                    >
-                      Print
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => deleteSingleRegistrant(r)}
-                      disabled={!r.id || deleting}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )})}
+                <TableRow key={rowKey}>
+                  <TableCell>
+                    <Checkbox
+                      aria-label={`Select ${getPrintableName(r)}`}
+                      checked={selectedRegistrantIdSet.has(rowKey)}
+                      onCheckedChange={(checked) =>
+                        toggleRegistrantSelection(rowKey, checked === true)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>{getPrintableName(r)}</TableCell>
+                  <TableCell>{getPrintableCreatedAt(r)}</TableCell>
+                  <TableCell>{getPrintableCompanyName(r)}</TableCell>
+                  <TableCell>{r.contact_no ?? r.contactNo ?? "—"}</TableCell>
+                  <TableCell>{r.email ?? "—"}</TableCell>
+                  <TableCell>
+                    {(r.receive_mail ?? r.receiveMail) ? (
+                      <Badge variant="secondary">Yes</Badge>
+                    ) : (
+                      <Badge variant="outline">No</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {r.printedAt ? (
+                      <Badge variant="secondary">Printed</Badge>
+                    ) : (
+                      <Badge variant="outline">Not printed</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          printRegistrants([r]);
+                          void markRegistrantsPrinted([r]);
+                        }}
+                      >
+                        Print
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => deleteSingleRegistrant(r)}
+                        disabled={!r.id || deleting}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {registrants.length === 0 && (
               <TableRow>
                 <TableCell

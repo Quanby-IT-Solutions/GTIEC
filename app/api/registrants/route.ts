@@ -18,6 +18,8 @@ type DeleteBody = {
 type MarkPrintedBody = {
   id?: string
   ids?: string[]
+  contact_no?: string
+  email?: string
 }
 
 export async function POST(request: Request) {
@@ -182,14 +184,29 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "At least one registrant id is required." }, { status: 400 })
   }
 
+  const contact_no = body.contact_no?.trim()
+  const email = body.email?.trim()
+  const hasContactNoUpdate = typeof contact_no === "string"
+  const hasEmailUpdate = typeof email === "string"
+
+  const data: { printedAt: Date; contact_no?: string; email?: string } = {
+    printedAt: new Date(),
+  }
+
+  if (hasContactNoUpdate) {
+    data.contact_no = contact_no || ""
+  }
+
+  if (hasEmailUpdate) {
+    data.email = email || ""
+  }
+
   try {
     const result = await prisma.registrant.updateMany({
       where: {
         id: { in: ids },
       },
-      data: {
-        printedAt: new Date(),
-      },
+      data,
     })
 
     return NextResponse.json({

@@ -58,13 +58,17 @@ export function LoginForm() {
 
   return (
     <Card className="relative z-10 w-full max-w-md border-chart-1/30 bg-white/90 shadow-2xl backdrop-blur">
-      <CardHeader>
-        <CardTitle className="text-3xl font-semibold text-chart-1">
-          Admin Login
-        </CardTitle>
-        <CardDescription className="text-slate-600">
-          Sign in with your admin credentials.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="flex flex-col">
+          <CardTitle className="text-3xl font-semibold text-chart-1">
+            Admin Login
+          </CardTitle>
+          <CardDescription className="text-slate-600">
+            Sign in with your admin credentials.
+          </CardDescription>
+        </div>
+
+        <img src="/images/qby.png" className="w-16 h-16" alt="" />
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
